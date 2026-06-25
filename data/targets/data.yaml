@@ -1,0 +1,14 @@
+path: C:/Users/SSAFY/Desktop/server/server/data/targets
+train: train/images
+val: valid/images
+test: test/images
+
+nc: 1
+names: ['target']
+
+roboflow:
+  workspace: -lkvz1
+  project: 0604-ubg2c
+  version: 1
+  license: CC BY 4.0
+  url: https://universe.roboflow.com/-lkvz1/0604-ubg2c/dataset/1

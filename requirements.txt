@@ -1,0 +1,18 @@
+# PyTorch 는 GPU(CUDA)에 맞는 빌드로 "먼저" 별도 인덱스에서 설치한다:
+#   RTX 40 시리즈 (예: 4060):            ... --index-url https://download.pytorch.org/whl/cu124
+#   RTX 50 시리즈 (Blackwell, 5060 Ti):  ... --index-url https://download.pytorch.org/whl/cu128
+#   예) .venv\Scripts\python -m pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128
+#   (CPU 전용으로 돌릴 경우: ... --index-url https://download.pytorch.org/whl/cpu)
+# 그 다음 이 파일을 설치한다:
+#   .venv\Scripts\python -m pip install -r requirements.txt
+
+ultralytics>=8.3.0          # YOLOv8 (+ ByteTrack 트래킹)
+lap>=0.5.12                 # ByteTrack(model.track) 매칭에 필요
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.0
+opencv-python>=4.10.0
+numpy>=1.26.0
+pydantic>=2.8.0
+python-multipart>=0.0.9     # FastAPI form/file 업로드
+httpx>=0.27.0               # 목 클라이언트/테스트용
+websockets>=12.0

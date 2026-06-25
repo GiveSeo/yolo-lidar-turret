@@ -1,0 +1,41 @@
+# 가상환경
+.venv/
+
+# 파이썬
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# 학습 산출물 / 모델 (대용량)
+runs/
+models/yolo/*.pt
+models/*.pt
+*.onnx
+# 단, 배포중인 YOLO 모델은 포함(바로 실행 가능하도록)
+!models/yolo/best.pt
+
+# 기반 가중치 (재다운로드 가능, 루트의 사전학습 모델)
+/*.pt
+
+# 데이터셋 압축본 / pip 캐시
+*.zip
+pip-cache/
+
+# 데이터 (대용량, 별도 관리)
+data/angle/*.csv
+data/targets/train/
+data/targets/valid/
+data/targets/test/
+data/0604_v2/
+data/captures/
+# data/0604_v3 (배포 모델 학습 데이터셋)는 재현용으로 포함 — 일부러 ignore 안 함
+
+# 피드백/보정 산출물 (런타임 생성)
+data/feedback/
+
+# 임시
+*.log
+.DS_Store
+
+# Claude Code 로컬 설정
+.claude/

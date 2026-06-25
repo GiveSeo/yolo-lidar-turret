@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>발사 로그 대시보드</title>
+  <link rel="stylesheet" href="/static/style.css" />
+  <style>
+    main.dash { padding: 16px; display: flex; flex-direction: column; gap: 16px; max-width: 1280px; margin: 0 auto; }
+    .dash-grid { display: grid; grid-template-columns: 1fr; gap: 16px; align-items: start; }
+    .dash-left { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+    @media (min-width: 900px) { .dash-grid { grid-template-columns: 1.7fr 1fr; } }
+    @media (min-width: 900px) { .dash-right { position: sticky; top: 16px; } }
+    .chat-block { display: flex; flex-direction: column; }
+    .chat-block .chat-log { flex: 1; max-height: none; height: 60vh; min-height: 320px; }
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; }
+    .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px; text-align: center; }
+    .card .num { font-size: 28px; font-weight: 700; }
+    .card .lbl { font-size: 12px; color: var(--muted); margin-top: 4px; }
+    .card.hit .num { color: var(--green); }
+    .card.miss .num { color: var(--red); }
+    .card.rate .num { color: var(--accent); }
+    .card.score .num { color: var(--yellow); }
+    .block { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
+    .block h2 { margin: 0 0 12px; font-size: 15px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { padding: 6px 8px; border-bottom: 1px solid var(--line); text-align: right; }
+    th:first-child, td:first-child { text-align: left; }
+    thead th { color: var(--muted); font-weight: 600; }
+    .tag { padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+    .tag.HIT { background: rgba(34,197,94,.15); color: var(--green); }
+    .tag.MISS { background: rgba(239,68,68,.15); color: var(--red); }
+    .grade { font-weight: 700; padding: 1px 7px; border-radius: 6px; font-size: 12px; }
+    .g-S { background: rgba(234,179,8,.2); color: var(--yellow); }
+    .g-A { background: rgba(34,197,94,.2); color: var(--green); }
+    .g-B { background: rgba(59,130,246,.2); color: var(--accent); }
+    .g-C { color: var(--muted); }
+    .g-D, .g-F { color: var(--red); }
+    .ai-text { white-space: pre-wrap; line-height: 1.6; font-size: 14px; margin-top: 12px; color: var(--fg); }
+    .ai-meta { font-size: 12px; color: var(--muted); margin-top: 8px; }
+    .chat-log { display: flex; flex-direction: column; gap: 8px; max-height: 360px; overflow-y: auto; margin-bottom: 10px; }
+    .chat-msg { padding: 8px 12px; border-radius: 10px; font-size: 14px; line-height: 1.5; white-space: pre-wrap; max-width: 90%; }
+    .chat-msg.user { align-self: flex-end; background: var(--accent); color: #fff; }
+    .chat-msg.bot { align-self: flex-start; background: #11151b; border: 1px solid var(--line); color: var(--fg); }
+    .chat-input { display: flex; gap: 8px; }
+    .chat-input input { flex: 1; padding: 9px 12px; border-radius: 8px; border: 1px solid var(--line); background: #0e1116; color: var(--fg); font-size: 14px; }
+    .chat-hint { font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+    .muted { color: var(--muted); }
+    button.primary { background: var(--accent); color: #fff; border: none; border-radius: 8px; padding: 9px 16px; font-size: 14px; cursor: pointer; }
+    button.primary:disabled { opacity: .5; cursor: default; }
+    button.ghost { background: transparent; color: var(--fg); border: 1px solid var(--line); border-radius: 8px; padding: 9px 14px; cursor: pointer; }
+    .toolbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    a.back { color: var(--accent); text-decoration: none; font-size: 13px; }
+    @media (max-width: 640px) { .cards { grid-template-columns: repeat(2, 1fr); } }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>📊 발사 로그 대시보드</h1>
+    <a class="back" href="/">← 조준 화면으로</a>
+  </header>
+
+  <main class="dash">
+    <div class="toolbar">
+      <button id="refresh" class="ghost">↻ 새로고침</button>
+      <button id="ai-btn" class="primary">🤖 AI 분석 (GMS)</button>
+      <button id="reset-btn" class="ghost">🗑️ 로그 초기화</button>
+      <span id="status" class="muted"></span>
+    </div>
+
+    <div class="dash-grid">
+      <!-- 왼쪽: 데이터 -->
+      <div class="dash-left">
+        <div class="cards">
+          <div class="card"><div id="c-total" class="num">-</div><div class="lbl">총 발사</div></div>
+          <div class="card hit"><div id="c-hit" class="num">-</div><div class="lbl">명중</div></div>
+          <div class="card miss"><div id="c-miss" class="num">-</div><div class="lbl">빗나감</div></div>
+          <div class="card rate"><div id="c-rate" class="num">-</div><div class="lbl">명중률</div></div>
+          <div class="card score"><div id="c-avg" class="num">-</div><div class="lbl">평균 점수</div></div>
+          <div class="card score"><div id="c-best" class="num">-</div><div class="lbl">최고 점수</div></div>
+        </div>
+
+        <div class="block">
+          <h2>명중 타임라인 (최근 50발, 좌→우 시간순)</h2>
+          <div id="timeline"></div>
+        </div>
+
+        <div class="block">
+          <h2>거리 구간별 명중률</h2>
+          <div id="bydist"></div>
+        </div>
+
+        <div class="block">
+          <h2>🤖 AI 분석</h2>
+          <div id="ai-out" class="muted">위 "AI 분석" 버튼을 누르면 GMS(Claude)가 명중 패턴을 분석합니다.</div>
+        </div>
+
+        <div class="block">
+          <h2>최근 발사 기록</h2>
+          <div id="shots-table"><span class="muted">불러오는 중…</span></div>
+        </div>
+      </div>
+
+      <!-- 오른쪽: 챗봇 -->
+      <div class="dash-right">
+        <div class="block chat-block">
+          <h2>💬 로그 챗봇 (GMS)</h2>
+          <div class="chat-hint">발사 로그에 대해 자유롭게 물어보세요. 예: "어느 거리에서 제일 잘 맞아?", "최근 빗나간 발들 공통점은?"</div>
+          <div id="chat-log" class="chat-log"></div>
+          <div class="chat-input">
+            <input id="chat-text" type="text" placeholder="질문 입력 후 Enter…" autocomplete="off" />
+            <button id="chat-send" class="primary">전송</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const SVGNS = "http://www.w3.org/2000/svg";
+    const COL = { green: "#22c55e", red: "#ef4444", accent: "#3b82f6", line: "#2a323d", muted: "#8b95a1" };
+
+    async function getJson(url, opts) {
+      const r = await fetch(url, opts);
+      return await r.json();
+    }
+
+    function el(tag, attrs, text) {
+      const e = document.createElementNS(SVGNS, tag);
+      for (const k in attrs) e.setAttribute(k, attrs[k]);
+      if (text != null) e.textContent = text;
+      return e;
+    }
+
+    function renderTimeline(timeline) {
+      const wrap = $("timeline");
+      wrap.innerHTML = "";
+      if (!timeline.length) { wrap.innerHTML = '<span class="muted">데이터 없음</span>'; return; }
+      const n = timeline.length, r = 7, gap = 6, pad = 8;
+      const w = pad * 2 + n * (r * 2) + (n - 1) * gap;
+      const h = 40;
+      const svg = el("svg", { width: "100%", viewBox: `0 0 ${w} ${h}`, height: h });
+      timeline.forEach((t, i) => {
+        const cx = pad + r + i * (r * 2 + gap);
+        const c = el("circle", {
+          cx, cy: h / 2, r,
+          fill: t.result === "HIT" ? COL.green : COL.red,
+        });
+        const scoreStr = t.score != null ? ` · ${t.score}점${t.grade ? "(" + t.grade + ")" : ""}` : "";
+        const title = el("title", {}, `#${t.id} ${t.result}${scoreStr} · ${t.distance_m ?? "-"}m\n${t.ts_iso || ""}`);
+        c.appendChild(title);
+        svg.appendChild(c);
+      });
+      wrap.appendChild(svg);
+    }
+
+    function renderByDistance(rows) {
+      const wrap = $("bydist");
+      wrap.innerHTML = "";
+      if (!rows.length) { wrap.innerHTML = '<span class="muted">데이터 없음</span>'; return; }
+      const barH = 26, gap = 10, labelW = 70, pad = 8, valW = 110;
+      const h = pad * 2 + rows.length * (barH + gap) - gap;
+      const svg = el("svg", { width: "100%", viewBox: `0 0 600 ${h}`, height: h });
+      const trackW = 600 - labelW - valW - pad;
+      rows.forEach((row, i) => {
+        const y = pad + i * (barH + gap);
+        svg.appendChild(el("text", { x: pad, y: y + barH / 2 + 4, fill: COL.muted, "font-size": 12 }, row.range));
+        svg.appendChild(el("rect", { x: labelW, y, width: trackW, height: barH, rx: 5, fill: COL.line }));
+        const pct = row.hit_rate;
+        svg.appendChild(el("rect", { x: labelW, y, width: Math.max(2, trackW * pct), height: barH, rx: 5, fill: COL.accent }));
+        svg.appendChild(el("text", { x: labelW + trackW + 8, y: y + barH / 2 + 4, fill: "#e6edf3", "font-size": 12 },
+          `${(pct * 100).toFixed(0)}%  (${row.hits}/${row.shots})`));
+      });
+      wrap.appendChild(svg);
+    }
+
+    function renderShotsTable(shots) {
+      const wrap = $("shots-table");
+      if (!shots.length) { wrap.innerHTML = '<span class="muted">발사 기록이 없습니다.</span>'; return; }
+      const head = "<tr><th>시각</th><th>결과</th><th>점수</th><th>등급</th><th>거리(m)</th><th>발사각</th><th>지연(ms)</th><th>센서세기</th></tr>";
+      const rows = shots.slice(0, 50).map((s) => {
+        const t = (s.ts_iso || "").replace("T", " ").slice(5);
+        return `<tr>
+          <td>${t}</td>
+          <td><span class="tag ${s.result}">${s.result}</span></td>
+          <td>${s.score != null ? s.score : "-"}</td>
+          <td>${s.grade ? `<span class="grade g-${s.grade}">${s.grade}</span>` : "-"}</td>
+          <td>${s.distance_m != null ? s.distance_m.toFixed(2) : "-"}</td>
+          <td>${s.used_angle != null ? s.used_angle.toFixed(1) + "°" : "-"}</td>
+          <td>${s.hit_latency_ms != null ? s.hit_latency_ms : "-"}</td>
+          <td>${s.sensor_value != null ? s.sensor_value : "-"}</td>
+        </tr>`;
+      }).join("");
+      wrap.innerHTML = `<table><thead>${head}</thead><tbody>${rows}</tbody></table>`;
+    }
+
+    async function load() {
+      $("status").textContent = "불러오는 중…";
+      try {
+        const [stats, shotsResp] = await Promise.all([
+          getJson("/api/stats"),
+          getJson("/api/shots?limit=50"),
+        ]);
+        $("c-total").textContent = stats.total;
+        $("c-hit").textContent = stats.hits;
+        $("c-miss").textContent = stats.misses;
+        $("c-rate").textContent = (stats.hit_rate * 100).toFixed(0) + "%";
+        $("c-avg").textContent = stats.avg_score != null ? stats.avg_score : "-";
+        $("c-best").textContent = stats.best_score != null ? stats.best_score : "-";
+        renderTimeline(stats.timeline || []);
+        renderByDistance(stats.by_distance || []);
+        renderShotsTable(shotsResp.shots || []);
+        $("status").textContent = `갱신됨 · 총 ${stats.total}발`;
+      } catch (e) {
+        $("status").textContent = "불러오기 실패: " + e;
+      }
+    }
+
+    async function runAi() {
+      const out = $("ai-out");
+      const btn = $("ai-btn");
+      btn.disabled = true;
+      out.className = "muted";
+      out.textContent = "GMS(Claude) 분석 중… (수 초 소요)";
+      try {
+        const r = await getJson("/api/ai_report", { method: "POST" });
+        if (r.ok) {
+          out.className = "ai-text";
+          out.textContent = r.report;
+          if (r.usage) {
+            const meta = document.createElement("div");
+            meta.className = "ai-meta";
+            meta.textContent = `model: ${r.model} · tokens in=${r.usage.input} out=${r.usage.output}`;
+            out.appendChild(meta);
+          }
+        } else {
+          out.className = "muted";
+          out.textContent = "분석 불가: " + (r.reason || "오류");
+        }
+      } catch (e) {
+        out.className = "muted";
+        out.textContent = "AI 호출 실패: " + e;
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    // --- 로그 챗봇 ---
+    const chatHistory = [];
+    function addMsg(role, text) {
+      const el = document.createElement("div");
+      el.className = "chat-msg " + (role === "user" ? "user" : "bot");
+      el.textContent = text;
+      $("chat-log").appendChild(el);
+      $("chat-log").scrollTop = $("chat-log").scrollHeight;
+      return el;
+    }
+    async function sendChat() {
+      const input = $("chat-text");
+      const q = input.value.trim();
+      if (!q) return;
+      input.value = "";
+      addMsg("user", q);
+      chatHistory.push({ role: "user", content: q });
+      const bubble = addMsg("bot", "…");
+      $("chat-send").disabled = true;
+      try {
+        const r = await getJson("/api/ai_chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ messages: chatHistory }),
+        });
+        if (r.ok) {
+          bubble.textContent = r.reply;
+          chatHistory.push({ role: "assistant", content: r.reply });
+        } else {
+          bubble.textContent = "오류: " + (r.reason || "응답 실패");
+          chatHistory.pop();   // 실패한 질문은 기록에서 제거
+        }
+      } catch (e) {
+        bubble.textContent = "호출 실패: " + e;
+        chatHistory.pop();
+      } finally {
+        $("chat-send").disabled = false;
+        $("chat-text").focus();
+      }
+    }
+    $("chat-send").addEventListener("click", sendChat);
+    $("chat-text").addEventListener("keydown", (e) => { if (e.key === "Enter") sendChat(); });
+
+    async function resetDash() {
+      if (!confirm("발사 로그를 모두 삭제할까요?\n(대시보드 통계 + 발사수 초기화, 되돌릴 수 없음)")) return;
+      const btn = $("reset-btn");
+      btn.disabled = true;
+      $("status").textContent = "초기화 중…";
+      try {
+        const r = await getJson("/api/shots/clear", { method: "POST" });
+        $("status").textContent = r.ok ? "✅ 초기화 완료" : "초기화 실패";
+        load();   // 빈 대시보드로 다시 로드
+      } catch (e) {
+        $("status").textContent = "초기화 실패: " + e;
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    $("refresh").addEventListener("click", load);
+    $("ai-btn").addEventListener("click", runAi);
+    $("reset-btn").addEventListener("click", resetDash);
+    load();
+  </script>
+</body>
+</html>

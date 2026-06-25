@@ -1,0 +1,7 @@
+path: C:/Users/SSAFY/Desktop/server/server/data/0604_v3
+train: train/images
+val: valid/images
+test: test/images
+
+nc: 1
+names: ['target']

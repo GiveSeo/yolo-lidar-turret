@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>AI 자동 조준 시스템</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <header>
+    <h1>🎯 AI 자동 조준 시스템</h1>
+    <div id="conn" class="badges">
+      <span id="rpi-badge" class="badge off">RPi</span>
+      <span id="esp-badge" class="badge off">ESP32</span>
+      <span id="phase-badge" class="badge phase">IDLE</span>
+      <a href="/dashboard" class="badge" style="text-decoration:none">📊 대시보드</a>
+    </div>
+  </header>
+
+  <main>
+    <section class="video-wrap">
+      <div class="video-box">
+        <img id="video" src="/video_feed" alt="영상 스트림" />
+        <div id="hint" class="hint">표적을 탭/클릭하여 선택하세요</div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="row">
+        <button id="btn-engage" class="primary">발사 시퀀스 시작</button>
+        <button id="btn-aim">조준만(트래킹)</button>
+        <button id="btn-clear">선택 해제</button>
+        <button id="btn-hit" class="ghost">명중 신호(테스트)</button>
+        <button id="btn-home" class="ghost">🎯 대포 초기화</button>
+        <button id="btn-reset-bias" class="ghost">♻️ 보정 초기화</button>
+      </div>
+      <div id="cannon-msg" class="fb-msg"></div>
+
+      <div id="result" class="result hidden"></div>
+
+      <!-- 착탄 피드백 패널 (결과 단계에서 표시) -->
+      <div id="feedback" class="feedback hidden">
+        <div class="fb-title">착탄 피드백 (발사각 + 좌우 보정)</div>
+        <div class="fb-sub">앞뒤 (tilt)</div>
+        <div class="fb-row">
+          <button class="fb-drop" data-drop="none">🎯 정타</button>
+          <button class="fb-drop" data-drop="short">⬇️ 앞(짧음)</button>
+          <button class="fb-drop" data-drop="long">⬆️ 뒤(김)</button>
+        </div>
+        <div class="fb-row">
+          <label>앞뒤 오차 <input id="fb-cm" type="number" min="0" step="0.5" value="0" /> cm</label>
+        </div>
+        <div class="fb-sub">좌우 (pan)</div>
+        <div class="fb-row">
+          <button class="fb-side" data-side="none">🎯 정중앙</button>
+          <button class="fb-side" data-side="left">◀ 왼쪽</button>
+          <button class="fb-side" data-side="right">오른쪽 ▶</button>
+        </div>
+        <div class="fb-row">
+          <label>좌우 오차 <input id="fb-side-cm" type="number" min="0" step="0.5" value="0" /> cm</label>
+          <button id="fb-submit" class="primary">보정 적용</button>
+        </div>
+        <div id="fb-msg" class="fb-msg"></div>
+        <div class="fb-row">
+          <button id="btn-clear-result" class="ghost">✕ 결과 닫기</button>
+        </div>
+      </div>
+
+      <div class="stats">
+        <div><span class="k">단계</span><span id="s-phase" class="v">-</span></div>
+        <div><span class="k">선택 표적</span><span id="s-sel" class="v">-</span></div>
+        <div><span class="k">거리</span><span id="s-dist" class="v">-</span></div>
+        <div><span class="k">Pan / Tilt</span><span id="s-ang" class="v">-</span></div>
+        <div><span class="k">보정(tilt/pan) / 발사수</span><span id="s-bias" class="v">-</span></div>
+        <div><span class="k">메시지</span><span id="s-msg" class="v">-</span></div>
+      </div>
+
+      <h2>검출 목록</h2>
+      <ul id="det-list" class="det-list"><li class="empty">검출 없음</li></ul>
+
+      <h2>🎮 RC 조종 (HAT: 전후진 + 좌우 조향)</h2>
+      <div class="rc">
+        <div class="dpad">
+          <button id="rc-up"    class="dbtn up"    title="전진 (W/↑)">▲</button>
+          <button id="rc-left"  class="dbtn left"  title="좌 (A/←)">◀</button>
+          <button id="rc-stop"  class="dbtn stop"  title="정지·중립 (Space)">■</button>
+          <button id="rc-right" class="dbtn right" title="우 (D/→)">▶</button>
+          <button id="rc-down"  class="dbtn down"  title="후진 (S/↓)">▼</button>
+        </div>
+        <div class="rc-ctl">
+          <label>속도 <input id="dc-speed" type="range" min="0" max="255" value="120" /><span id="dc-speed-v" class="v">120</span></label>
+          <label>조향폭 <input id="steer-amt" type="range" min="0" max="150" value="120" /><span id="steer-amt-v" class="v">120</span></label>
+          <label class="rc-chk"><input id="steer-invert" type="checkbox" /> 조향 반전(좌우 바뀜)</label>
+        </div>
+        <div id="motor-msg" class="fb-msg"></div>
+        <div class="rc-hint">버튼을 누르고 있는 동안 이동 · 떼면 정지/중립 · 키보드 WASD·방향키</div>
+      </div>
+    </section>
+  </main>
+
+  <script src="/static/app.js?v=2"></script>
+</body>
+</html>
